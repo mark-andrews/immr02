@@ -117,6 +117,7 @@ get the [brms](https://github.com/paul-buerkner/brms) R package, which
 makes using Stan with R particularly easy when using conventional
 models.
 
+
 To get [brms](https://github.com/paul-buerkner/brms), first start
 Rstudio (whether on Windows, Macs, Linux) and then run
 
@@ -124,12 +125,13 @@ Rstudio (whether on Windows, Macs, Linux) and then run
 install.packages('brms')
 ```
 
-You can test the installation of
-[brms](https://github.com/paul-buerkner/brms) with
+You can test that it worked by running the following code, which should take around 1 minute to complete.
 
-``` {.R}
-library('brms')
+```r
+library(tidyverse)
+library(brms)
+
+data_df <- tibble(x = rnorm(10))
+
+M <- brm(x ~ 1, data = data_df)
 ```
-
-If no errors are raised, you can assume the installation was successful.
-

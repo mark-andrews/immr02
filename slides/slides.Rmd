@@ -302,7 +302,6 @@ $$
 
 # 
 
-This model be represented by the Bayesian network diagram shown in Figure \ref{fig:nonmultilevel_alcohol}.
 \input{include/nonmultilevel_alcohol.tex}
 This is a non-multilevel model because the alcohol consumption averages in each country are being modelled independently of those of other countries.
 
@@ -315,7 +314,7 @@ y_i &\sim N(\mu_{[x_i]}, \sigma^2),\quad\text{for $i \in 1 \ldots n$},\\
 \mu_j &\sim N(\phi, \tau^2),\quad\text{for $j \in 1 \ldots J$}.
 \end{aligned}
 $$
-*This model, which is depicted by a Bayesian network diagram in Figure \ref{fig:multilevel_alcohol}, extends the previous one by assuming that the $\mu_1, \mu_2 \ldots \mu_j \ldots \mu_J$ are drawn from a normal distribution with mean $\phi$ and standard deviation of $\tau$.
+* This model extends the previous one by assuming that the $\mu_1, \mu_2 \ldots \mu_j \ldots \mu_J$ are drawn from a normal distribution with mean $\phi$ and standard deviation of $\tau$.
 
 # 
 

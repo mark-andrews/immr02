@@ -768,3 +768,535 @@ VarCorr(M_ml_diag2)
 ```
 * The only quantity that is absent here compared to the full model is the estimate for $\rho$.
 
+
+# Multilevel models for nested data
+
+
+* In all the examples considered thus far, our multilevel models had only two levels, which we can denote level 0 and level 1.
+* For example, we had rats (level 0) within batches (level 1), observations of per capita alcohol consumption in different years (level 0) within different countries (level 1), individual observations of reaction times on different days (level 0) grouped by different experimental subjects (level 1).
+* We can easily have groups within groups, and we usually refer to these models as *nested* multilevel models.
+
+# 
+
+* Let us consider the following data which is based on a subset of the `classroom` data made available in R package `WWGbook`.
+```{r, echo=T}
+classroom_df <- read_csv(here('data/classroom.csv'))
+```
+* Each observation is of a child (level 0), and for each one we have their mathematics test score in their first grade (`mathscore`) and their home socioeconomic status (`ses`).
+* There are $n$ children in total, indexed by $i \in 1 \ldots n$.
+* Each child is in one of $J$ classes (level 1, denoted by `classid`), and each class is within one of $K$ schools (level 2, denoted by `schoolid`).
+
+# 
+
+* This hierarchical arrangement of the data is shown in Figure \ref{fig:classroom:tree}.
+\input{include/classroom}
+
+
+# 
+
+* The relationship between `ses` and `mathscore` can vary across different schools, see Figure \ref{fig:classroom}a.
+* Furthermore, *within* each school, there may be variation in the effect of `ses` on `mathscore` across different classes, see Figure \ref{fig:classroom}b.
+* Formally, a three-level multilevel varying intercepts and slopes linear model corresponding to the above problem may be presented as follows.
+$$
+\begin{aligned}
+\text{for $i \in 1\ldots n$,}\quad y_i &\sim N(\mu_i, \sigma^2),\\
+\mu_i & = \gamma_{[c_i]0} + \gamma_{[c_i]1} x_i,\\
+\text{for $j \in 1\ldots J$,}\quad \vec{\gamma}_{j} &\sim N(\vec{\beta}_{[s_j]}, \Sigma_c),\\
+\text{for $k \in 1\ldots K$,}\quad \vec{\beta}_{k} &\sim N(\vec{b}, \Sigma_s),\\
+\end{aligned}
+$$
+
+# 
+
+* For each one of the $n$ children, we have their `mathscore` variable $y_i$, their `ses` variable $x_i$, and an indicator variable $c_i \in 1 \ldots J$.
+* The indicator variable indicates which of the $J$ different classes the child is a member of.
+* For each of one of these $J$ classes, we have another indicator variable $s_j \in 1 \ldots K$.
+* This indicates the school that class $j$ is a member of.
+* For example, if $s_j = k$, this means that class $j$ is within school $k$.
+* From this description, we see that there are $J$ vectors of coefficients, i.e. $\vec{\gamma}_1, \vec{\gamma}_2 \ldots \vec{\gamma}_J$, and each one corresponds to one of the $J$ different classes in the data set.
+* Each vector $\vec{\gamma}_j$ is a sample from a multivariate normal distribution centered at $\vec{\beta}_{[s_j]}$, where $s_j$ is the school that class $j$ is a member of.
+* The covariance matrix of this multivariate normal distribution is $\Sigma_c$.
+* The are $K$ different vectors $\vec{\beta}_1, \vec{\beta}_2 \ldots \vec{\beta_K}$ are themselves drawn from another multivariate normal distribution whose center is $\vec{b}$ and whose covariance matrix is $\Sigma_s$.
+
+#
+
+```{r classroom, echo=F, fig.cap="The line of best fit for the children in the school is shown.", fig.align='center', out.width='\\textwidth'}
+x <- classroom_df %>% 
+  filter(schoolid %in% c(31, 33, 71, 76, 77, 93)) 
+
+y <- left_join(x,
+               x %>% 
+                 select(schoolid, classid) %>% 
+                 distinct() %>% 
+                 group_by(schoolid) %>%
+                 mutate(k = row_number()) %>%
+                 ungroup()
+) %>% mutate(classid = as.factor(k))
+
+p1 <- y %>% 
+  ggplot(aes(x = ses, y = mathscore, colour = classid)) +
+  geom_point(size = 0.5) +
+  stat_smooth(size = 0.5, method = 'lm', se = F, fullrange = T) +
+  facet_wrap(~schoolid) +
+  theme_minimal() + 
+  theme(legend.position = 'none')
+
+p2 <- y %>% 
+  ggplot(aes(x = ses, y = mathscore)) +
+  geom_point(size = 0.5) +
+  stat_smooth(size = 0.5, method = 'lm', se = F, fullrange = T) +
+  facet_wrap(~schoolid) +
+  theme_minimal() + 
+  theme(legend.position = 'none')
+
+p2
+
+
+
+```
+
+#
+
+```{r classroom2, echo=F, fig.cap="A separate line of best fit for each class within each school is shown.", fig.align='center', out.width='\\textwidth'}
+
+p1
+
+
+
+```
+
+# 
+
+* Using the same reasoning as above, we may rewrite $\vec{\gamma}_j \sim N(\vec{\beta}_{[s_j]}, \Sigma_c)$ as $\vec{\gamma}_j = \vec{\beta}_{[s_j]} + \vec{\xi}_j$ where $\vec{\xi}_j \sim N(0, \Sigma_c)$.
+* Likewise, we may rewrite $\vec{\beta}_k \sim N(\vec{b},\Sigma_s)$ as $\vec{\beta}_k = \vec{b} + \vec{\zeta}_k$ where $\vec{\zeta}_k \sim N(0, \Sigma_s)$.
+Thus, we have
+$$
+\begin{aligned}
+\vec{\gamma}_j &= \vec{\beta}_{[s_j]} + \xi_j,\\
+               &= \vec{b} + \zeta_{[s_j]} + \xi_j.
+\end{aligned}
+$$
+
+# 
+
+
+This allows us to rewrite the original model as follows.
+$$
+\begin{aligned}
+\text{for $i \in 1\ldots n$,}\quad y_i &\sim N(\mu_i, \sigma^2),\\
+                                 \mu_i & = 
+                                 \underbrace{b_{0} + b_{1} x_i}_{\text{fixed effects}} +
+                                 \underbrace{\zeta_{[z_i]0} + \zeta_{[z_i]1} x_i}_{\text{school random effects}} +
+                                 \underbrace{\xi_{[c_i]0} + \xi_{[c_i]1} x_i}_{\text{class random effects}},\\
+\text{for $j \in 1\ldots J$,}\quad \vec{\xi}_{j} &\sim N(0, \Sigma_c),\\
+\text{for $k \in 1\ldots K$,}\quad \vec{\zeta}_{k} &\sim N(0, \Sigma_s).
+\end{aligned}
+$$
+Here, for notational simplicity, we have used a new indicator variable $z_i = s_{[c_i]} \in 1 \ldots K$ that indicates the school that child $i$ is a member of.
+
+# 
+
+* Using `lmer`, we can implement this model as follows.
+```{r, echo=T}
+M_classroom <- lmer(
+  mathscore ~ ses + (ses|classid) + (ses|schoolid),
+  data = classroom_df)
+```
+* As we can see, we simply use random effects terms, one for random variation by school and the other for random variation by class.
+
+
+#
+
+* Before, we proceed, by examining the results of `VarCorr`, we see that there is a perfect correlation between the random slopes and random intercepts due to class.
+```{r, echo=T}
+VarCorr(M_classroom)
+```
+
+* This indicates overparameterization in the model, and can be avoided by removing the possibility of a correlation between the slopes and intercepts for class.
+```{r, echo=T}
+M_classroom <- lmer(
+  mathscore ~ ses + (ses||classid) + (ses|schoolid),
+  data = classroom_df)
+```
+
+# 
+
+* Now, just like previous linear mixed effects models, our fixed effects will consist of a single slope and intercept term.
+```{r, echo=T}
+fixef(M_classroom)
+```
+
+* From this, we see that at a population level, every unit increase in `ses` leads to a `r fixef(M_classroom)['ses'] %>% round(2)` increase in `mathscore`.
+
+* Information concerning the random effects are available from `VarCorr`. 
+```{r, echo=T}
+VarCorr(M_classroom)
+```
+
+* From this, amongst other things, we see there is a minimal random variation in the `ses` slopes across the different classes.
+
+# 
+
+* The variable `classid` unambiguously identified the class of children by giving each class in each school a unique identifier.
+* In some cases, we do not have unique identifiers for nested groups.
+*  As an example, consider the `classid2` variable in the `classroom_df` data sets.
+
+# 
+
+* Let us draw a sample of observations from `classroom_df`.
+```{r, echo=T}
+classroom_df %>% 
+  sample_n(3)
+```
+* Unlike `classid`, `classid2` provides an identifier for each class that is *relative* to its school. 
+* Thus, we have class `1` in school `41`, and class `1` in school `97`.
+* These are completely unrelated classes.
+* In order to deal with variables like this, we must use an alternative formula syntax.
+
+#
+
+* For example, in order to have a varying intercepts only model, where the intercept varies by class and school, and assuming we are using the `classid2` variable, we use the following syntax in the formula to indicate that the values of `classid2` are relative to that of `schoolid`.
+```{r, echo=T}
+M_classroom_vi <- lmer(
+  mathscore ~ ses + (1|schoolid/classid2),
+  data = classroom_df)
+```
+
+* This is identical to the following model.
+```{r, echo=T}
+M_classroom_vi2 <- lmer(
+  mathscore ~ ses + (1|schoolid) + (1|schoolid:classid2),
+  data = classroom_df)
+```
+* The syntax in this second version makes it clear that we are effectively creating a unique identifier for the class by combining the values of `schoolid` and `classid2`.
+
+# Crossed structures
+
+* An alternative multilevel arrangement of data is known as a *crossed* structure.
+* Again, this is easiest to illustrate by way of an example.
+* Consider a type of cognitive psychology experiment known as a lexical decision task, which is used to understand the basic cognitive processes involved in reading words.
+* In this experiment, multiple subjects are each shown multiple different letter strings, e.g. *dinosaur*, *morhet*, *children*, etc., and they have to respond as to whether the string is a word or not, and their reaction times to do so are also recorded.
+* Thus, we would have subjects $s_1, s_2 \ldots s_j \ldots s_J$ being shown letter strings $w_1, w_2 \ldots w_k \ldots w_K$, and from each subject for each string, we have a response, e.g. a yes/no binary response, or reaction, or both.
+
+
+# 
+
+* Over the entire experiment, our total set of responses could be denoted $r_1, r_2 \ldots r_n$.
+* These are our level 0 observations.
+* Crucially, each response is cross classified as belonging to a particular subject and a particular letter string. 
+
+\input{include/crossed_structures}
+
+# 
+
+* In general, when dealing with crossed multilevel structures, we simply consider the random variation of slopes or intercepts according to more than one grouping variable.
+* As an example, consider the British Lexicon Project data that we also considered in Chapter 3.
+* This provides us with data from a large lexical decision experiment, and a small fraction of this data is provided in the file `data/blp-short2.csv`.
+```{r, echo=T}
+blp_df <- read_csv(here('data/blp-short2.csv'))
+```
+* Here, each `rt` observation corresponds to a particular participant and a particular word (`spelling`).
+* There are `r blp_df %>% pull(spelling) %>% unique() %>% length()` distinct words and `r blp_df %>% pull(participant) %>% unique() %>% length()` distinct participants.
+
+# 
+
+* For simplicity, let us consider the multilevel linear model whereby average `rt` varies by both `participant` and `spelling`.
+* This model is as follows.
+$$
+\begin{aligned}
+\text{for $i \in 1\ldots n$,}\quad y_i &\sim N(\mu_i, \sigma^2),\\
+\mu_i &= \beta_{[s_i]} + \gamma_{[w_i]},\\
+\text{for $j \in 1\ldots J$,}\quad \beta_j &\sim N(b_s, \tau^2_{s}),\\
+\text{for $k \in 1\ldots K$,}\quad \gamma_k &\sim N(b_w, \tau^2_w).
+\end{aligned}
+$$
+
+# 
+
+* We can rewrite $\beta_j$ as $\beta_j = b_s + \zeta_j$, where $\zeta_j \sim N(0, \tau^2_s)$, and rewrite $\gamma_j$ as $\gamma_j = b_w + \xi_k$, where $\xi_k \sim N(0, \tau^2_w)$.
+This leads to
+$$
+\begin{aligned}
+\text{for $i \in 1\ldots n$,}\quad y_i &\sim N(\mu_i, \sigma^2),\\
+\mu_i &= \nu + \zeta_{[s_i]} + \xi_{[w_i]},\\
+\text{for $j \in 1\ldots J$,}\quad \zeta_j &\sim N(0, \tau^2_{s}),\\
+\text{for $k \in 1\ldots K$,}\quad \xi_k &\sim N(0, \tau^2_w),
+\end{aligned}
+$$
+where $\nu = b_s + b_w$.
+
+
+# 
+
+This is implemented in `lmer` as follows.
+```{r, echo=T}
+M_blp <- lmer(rt ~ 1 + (1|participant) + (1|spelling),
+              data = blp_df)
+```
+From this, we see the estimate of $\nu$ is as follows.
+```{r, echo=T}
+fixef(M_blp)
+```
+The estimates of $\tau_s$, $\tau_w$, and $\sigma$ are as follows.
+```{r, echo=T}
+VarCorr(M_blp)
+```
+
+
+# Group level predictors
+
+* In the examples thus far, the predictor variables were at the bottom level, level 0.
+* For example, at level 0, we had children, and the values of the predictor variable `ses` were specific to each child.
+* Consider the following two related data sets, which are based on the `MathAchieve` and `MathAchSchool` data sets, respectively, available in the `nlme` package:
+```{r, echo=T}
+mathachschool_df <- read_csv(here('data/mathachieveschool.csv'))
+mathach_df <- read_csv(here('data/mathachieve.csv'))
+```
+* In the `mathach_df` data, for each pupil in a school, we have variable related to their ethnic minority status, sex, home socioeconomic background, and their mathematical achieve score (`mathach`).
+* Thus, in this data set, we have level 1 grouping variable, `school`, but all predictors are at level 0.
+* The `mathachschool_df` data set, on the other hand, provides us with predictors related to the schools.
+* For example, we have the school's size, whether it is public or private, etc., the proportion of students in the school on an academic track (`pracad`), a measure of the discrimination climate in the school (`disclim`), whether there is a high proportion of minority students (`himinty`), and the mean socioeconomic status of the school (`meanses`).
+* In order to use the school level and pupil level predictors together, we will join these two data frames by `school`.
+```{r, echo=T}
+mathach_df2 <- left_join(mathach_df,
+                         mathachschool_df, 
+                         by = 'school')
+```
+
+#
+
+* Group level predictors present do not special difficulty for linear mixed effects models but can not be treated identically to individual observation level predictors.
+* For example, just like in similar examples above, we use a multilevel varying slope and varying intercept model to look at how `ses` affects `mathach` scores and how this effect varies by `school`.
+* The `ses` variable is a pupil level variable, and we would be able to treat other pupil level variable s in a similar way.
+* We would not, however, be able to use group level predictors, e.g. `pracad`, `disclim`, etc., in a similar way.
+* For example, we could not perform the following model.
+```{r, eval=F}
+# does not work
+lmer(mathach ~ pracad + (pracad|school), data = mathach_df2)
+```
+* This is simply because the effect of `pracad` on `mathach` can not vary by school: each school has exactly one value of `pracad`.
+
+
+
+# 
+
+* We still can easily use `pracad` in a linear mixed effect model, for example as follows.
+```{r, echo=T}
+# does work
+# glp: group level predictor
+M_glp <- lmer(mathach ~ pracad + (1|school), data = mathach_df2)
+```
+* In this case, our model is that a pupil's `mathach` varies by the school's `pracad`, and there is variation across schools in the terms of the average `mathac`, with the latter effect being due to the random intercepts term.
+
+# 
+
+
+
+* In this model, the fixed effects coefficients are as follows.
+```{r, echo=T}
+fixef(M_glp)
+```
+* We therefore see that a unit increase in `pracad` leads to a `r fixef(M_glp)['pracad'] %>% round(2)` increase in `mathach`.
+* The random effects are as follows.
+```{r, echo=T}
+VarCorr(M_glp)
+```
+* From this, we see that the standard deviation in the intercept terms across schools is `r VarCorr(M_glp)$school %>% attr('stddev') %>% round(2)`.
+
+
+# 
+
+* A more interesting situation involving group level predictors arises in the following situation. 
+* Assuming that our outcome variable is still `mathach`, we could model how this varies by the pupil's `ses`, and how this effect varies across schools, using a multilevel varying slopes and intercepts model.
+* We could also use a school level predictor, for example, `himinty`, and model how the school-level slopes and intercepts for the `ses` effect vary by it.
+
+# 
+
+```{r himinty_plot,  fig.cap="How mathematical achievement varies by a child's socioeconomic background across a sample of different school. Schools are colour coded to indicate whether they have high ethnic minority proportions (lighter colour) or not.", echo=F}
+set.seed(1045)
+left_join(mathach_df,
+          mathachschool_df, 
+          by = 'school') %>% 
+  filter(school %in% sample(unique(school), 20)) %>% 
+  ggplot(aes(x = ses, y = mathach, colour = himinty)) + 
+  geom_point(size = 0.5) +
+  stat_smooth(method = 'lm', se = F) +
+  facet_wrap(~school) +
+  theme_minimal() +
+  theme(legend.position = "none")
+```
+
+
+# 
+
+* Formally, this model would be as follows.
+$$
+\begin{aligned}
+\text{for $i \in 1 \ldots n$}\quad y_i &\sim N(\mu_i, \sigma^2),\\
+\mu_i &= \beta_{[s_i]0} + \beta_{[s_i]1} x_{i},\\
+\text{for $j \in 1 \ldots J$}\quad\vec{\beta}_{j} &\sim N(\vec{b}_{0} + \vec{b}_{1} z_j, \Sigma),
+\end{aligned}
+$$
+where $y_i$ is the `mathach` score and $x_i$ is the `ses` score of pupil $i$, and $z_j$ is the `himinty` score of school $j$.
+
+
+
+* As before, we can rewrite $\vec{\beta}_j$ as follows,
+$$
+  \begin{aligned}
+\vec{\beta}_j &= \vec{b}_0 + \vec{b}_1 z_j + \vec{\zeta}_j,\\
+\left[
+  \begin{matrix}
+  \beta_{j0}\\
+  \beta_{j1}
+  \end{matrix}
+  \right] 
+&= 
+  \left[
+    \begin{matrix}
+    b_{00}\\
+    b_{01}
+    \end{matrix}
+    \right] +
+  \left[
+    \begin{matrix}
+    b_{10}\\
+    b_{11}
+    \end{matrix}
+    \right] z_j +
+  \left[
+    \begin{matrix}
+    \zeta_{j0}\\
+    \zeta_{j1}
+    \end{matrix}
+    \right],
+\end{aligned}
+$$
+  where
+$$
+  \vec{\zeta}_j = \left[
+    \begin{matrix}
+    \zeta_{j0}\\
+    \zeta_{j1}
+    \end{matrix}
+    \right] \sim N(0, \Sigma).
+  $$
+
+#
+
+* From this, we have
+  $$
+    \begin{aligned}
+  \text{for $i \in 1 \ldots n$}\quad y_i &\sim N(\mu_i, \sigma^2),\\
+  \mu_i &= 
+    (b_{00} + b_{10} z_{[s_i]} + \zeta_{[s_i]0})
+  +
+    (b_{01} + b_{11} z_{[s_i]} + \zeta_{[s_i]1}) x_i,\\
+  &= 
+    \underbrace{b_{00} + 
+        b_{01} x_i +
+        b_{10} z_{[s_i]}+
+        b_{11} z_{[s_i]} x_i
+    }_{\text{fixed effects}} +
+    \underbrace{
+      \zeta_{[s_i]0} + 
+        \zeta_{[s_i]1} x_i
+    }_{\text{random effects}},\\
+  \text{for $j \in 1 \ldots J$}\quad\vec{\zeta}_{j} &\sim N(0, \Sigma),
+  \end{aligned}
+$$
+* From this we see that the role of the group level predictor $z_{[s_i]}$ interacts with the pupil level predictor $x_i$.
+  
+# 
+  
+* To implement this model in R, we first join the school level data with that of the pupil level data.
+* Note that `himinty` is coded as binary variable where a value of `1` means that there is a high proportion of ethic minorities in the school. 
+
+```{r, echo=T}
+# glp: group level predictor
+M_glp <- lmer(mathach ~ ses + himinty + ses:himinty + (ses|school),
+                data = mathach_df2)
+```
+  
+# 
+  
+* The standard deviations of variation in random intercepts and slopes, and their correlation is as follows.
+```{r, echo=T}
+  VarCorr(M_glp)
+```
+
+* The fixed effects coefficients are as follows:
+```{r, echo=T}
+  fixef(M_glp)
+```
+
+* From this, we see that the role of `himinty` changing its value from 0 to 1 decreases the intercept by `r abs(fixef(M_glp)['himinty']) %>% round(2)` and decreases the slope of the effect of `ses` by `r abs(fixef(M_glp)['ses:himinty']) %>% round(2)`.
+  
+# Multilevel generalized linear models
+  
+* Multilevel generalized linear models can be approached just like multilevel linear models.
+```{r, echo=T}
+sleepstudy2 <- sleepstudy %>% mutate(fast_rt = Reaction < median(Reaction))
+  
+M <- glmer(fast_rt ~ Days + (Days|Subject),
+             family = binomial(link = 'logit'),
+             data = sleepstudy2)
+  
+```
+
+
+
+# Bayesian multilevel models
+
+* In practical terms, Bayesian approaches to multilevel modelling differ from their classical counterparts primarily in their method of inference.
+* In both cases, we begin by specifying a probabilistic model of the observed data.
+* For example, if our data was the sleep deprivation and reaction time data from above, regardless of whether a Bayesian or a classical approach is being taken, a reasonable model of this data would a multilevel varying slopes and intercepts linear model that can be stated as follows:
+$$
+\begin{aligned}
+\text{for $i \in 1\ldots n$,}\quad y_i &\sim N(\mu_i, \sigma^2),\\
+\mu_i &= b_0 + b_1 x_i + \zeta_{[s_i]0} + \zeta_{[s_i]1} x_i,\\
+\text{for $j \in 1\ldots J$,}\quad \vec{\zeta}_{j} &\sim N(0, \Sigma).
+\end{aligned}
+$$
+where $y_i$, $s_i$, $x_i$ are, respectively, the reaction time, subject index, and days of sleep deprivation corresponding to observation $i$.
+* In general, how we specify this probabilistic model and the choices available to us are identical in both the Bayesian and classical approaches.
+* Having specified the model, however, the Bayesian and classical approaches differ in terms of how they perform the inference of the unknown parameters. 
+
+
+# 
+
+* Classical approaches infer estimators of these unknowns, for example, by maximum likelihood estimation, and then consider the sampling distribution of these estimators for hypothetical true values of the parameters.
+* From this, we obtain p-values for hypothesis tests, null or otherwise, and confidence intervals, and related concepts.
+* Bayesian approaches, on the other hand, first posit a *prior* probability distribution over the unknown parameters.
+In the above model, for example, we can parameterize it in terms of 6 unknowns:
+$$
+b_0, b_1, \sigma, \tau_0, \tau_1, \rho,
+$$
+where $\tau_0^2$, $\tau_1^2$ are the diagonal elements of $\Sigma$, and $\rho$ is its off-diagonal element.
+* Bayesian methods will therefore posit a probability distribution $\Prob{b_0, b_1, \sigma, \tau_0, \tau_1, \rho}$ over this six dimensional space.
+* This prior is then combined, via Bayes's rule, with the *likelihood* function over the parameters to result in the posterior distribution.
+* The posterior distribution tells us the probability that the true values of the parameters are a particular values, conditional on all the assumptions of the model.  
+
+# 
+
+* If we accept default settings for priors and other quantities, performing a Bayesian multilevel linear model using `brms::brm` is identical to using `lme4::lmer`.
+* For example, the following implements the Bayesian counterpart of the `lmer` based model that we used above, which clearly differs only by using the command `brm` instead of `lmer`:
+```{r echo = T, m_bayes, cache=T}
+M_bayes <- brm(Reaction ~ Days + (Days|Subject),
+               data = sleepstudy)
+```
+The main results of this model may be obtained by `summary(M_bayes)`, or equivalently by just typing the name of the model `M_bayes`.
+```{r, eval=F}
+M_bayes
+```
+In this output, amongst other information, for each one of the six variables $b_0, b_1, \sigma, \tau_0, \tau_1, \rho$, we have the mean of the posterior distribution (`Estimate`), the standard deviation of the posterior distribution (`Est.Error`), and the upper and lower limits of the 95% high posterior density interval (`l-95% CI`, `u-95% CI`).
+
+# 
+
+The prior on `M_bayes` can be seen as follows:
+```{r, echo=T}
+M_bayes$prior
+```
+
+
+

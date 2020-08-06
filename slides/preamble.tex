@@ -78,6 +78,23 @@
 \tikzstyle{parameter}=[circle,font=\small,minimum size=5mm,inner sep=0mm,
                                    draw=black!70,
                                     fill=none]
+% tikz stuff
+\usepackage{tikz}
+\usetikzlibrary{shapes}
+\usetikzlibrary{positioning,shapes,trees,arrows,shadows,arrows.meta,backgrounds,fit}
+
+\tikzset{every path/.style={-latex,thick}}
+
+\tikzset{
+  basic/.style = {font=\sffamily},
+  % material/.style  = {basic, text width=8mm, font=\footnotesize\sffamily, fill=yellow!60},
+  % revision/.style  = {material, fill=blue!30},
+  % root/.style   = {basic,  align=center, fill=pink!60},
+  level 1/.style = {basic, align=center, sibling distance = 30mm},
+  level 2/.style = {basic, sibling distance = 20mm},
+  level 3/.style = {basic, sibling distance = 15mm},
+  % level 4/.style = {level distance=10mm,basic, fill=pink!60, sibling distance = 20mm}
+}
 
 
 \graphicspath{{../images/}}
@@ -86,3 +103,5 @@
 \DeclareMathAccent{\dot}     {\mathalpha}{legacymaths}{95}
 \DeclareMathAccent{\bar}     {\mathalpha}{legacymaths}{22}
 \DeclareMathAccent{\tilde}     {\mathalpha}{legacymaths}{126}
+
+\setbeamertemplate{footline}[frame number]

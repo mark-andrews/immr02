@@ -1,5 +1,6 @@
 \begin{figure}
 \begin{center}
+\resizebox{\linewidth}{!}{
 \begin{tikzpicture}[every node/.style={draw,rectangle,rounded corners, inner sep=2mm}]
 \node (s1) at (0,0) {$s_1$};
 \node[right=of s1] (s2) {$s_2$}; 
@@ -24,6 +25,7 @@
 \draw[->] (w3) to (rn);
 \draw[->] (s3) to (rn);
 \end{tikzpicture}
+}
 \end{center}
 \caption{A \textit{crossed} multilevel data arrangement, such as would arise in a lexical decision experiment. Each $r_i$ is grouped under one of the $s_1, s_2 \ldots s_J$ and also one of the $w_1, w_2 \ldots w_K$.}
 \label{fig:crossed_diagram}

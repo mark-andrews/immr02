@@ -36,7 +36,7 @@ M_bayes <- brm(y ~ x_1 + x_2, data = Df)
 # Overriding defaults
 M_bayes <- brm(y ~ x_1 + x_2, 
                data = Df,
-               cores = 2, # I have a dual-core
+               cores = 4, # I have a dual-core
                chains = 4, # 4 chains is typical
                iter = 2500,
                warmup = 1000, # these are initilization etc iterations
@@ -77,7 +77,7 @@ prior_summary(M_bayes)
 # ------ Model comparison ----------
 M_bayes <- brm(y ~ x_1 + x_2, 
                data = Df,
-               cores = 1, # I have a dual-core
+               cores = 4, # I have a dual-core
                chains = 4, # 4 chains is typical
                iter = 2500,
                warmup = 1000, # these are initilization etc iterations
@@ -89,7 +89,7 @@ M_bayes <- brm(y ~ x_1 + x_2,
 # Set up a null model
 M_bayes_null <- brm(y ~ x_1, 
                     data=Df,
-                    cores = 1, # I have a dual-core
+                    cores = 4, # I have a dual-core
                     chains = 4, # 4 chains is typical
                     iter = 2500,
                     warmup = 1000, # these are initilization etc iterations
@@ -167,30 +167,31 @@ ggplot(Df,
 
 
 # Random intercepts model
+
 M_lmer_ri <- lmer(Reaction ~ Days + (1|Subject),
-                  data = Df)
+                  data = sleepstudy)
 
 M_ri <- brm(Reaction ~ Days + (1|Subject),
-            cores = 2,               
-            prior = set_prior('normal(0, 100)'), # flat prior on coefs
+            cores = 4,               
+            prior = set_prior('normal(0, 100)'), # flat prior on coef
             save_all_pars = T,
-            data = Df)
+            data = sleepstudy)
 
 # Random intercepts and random slopes model
 M_lmer <- lmer(Reaction ~ Days + (Days|Subject),
-               data = Df)
+               data = sleepstudy)
 
 M <- brm(Reaction ~ Days + (Days|Subject),
          cores = 2,               
          prior = set_prior('normal(0, 100)'), # flat prior on coefs
          save_all_pars = T,
-         data = Df)
+         data = sleepstudy)
 
 
 # Model comparison
 waic(M_ri, M)
 loo(M_ri, M)
-bayes_factor(M_ri, M)
+#bayes_factor(M_ri, M)
 
 # Nested models
 Df <- read_csv('data/science.csv')

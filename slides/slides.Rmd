@@ -792,32 +792,6 @@ classroom_df <- read_csv(here('data/classroom.csv'))
 \input{include/classroom}
 
 
-# 
-
-* The relationship between `ses` and `mathscore` can vary across different schools, see Figure \ref{fig:classroom}a.
-* Furthermore, *within* each school, there may be variation in the effect of `ses` on `mathscore` across different classes, see Figure \ref{fig:classroom}b.
-* Formally, a three-level multilevel varying intercepts and slopes linear model corresponding to the above problem may be presented as follows.
-$$
-\begin{aligned}
-\text{for $i \in 1\ldots n$,}\quad y_i &\sim N(\mu_i, \sigma^2),\\
-\mu_i & = \gamma_{[c_i]0} + \gamma_{[c_i]1} x_i,\\
-\text{for $j \in 1\ldots J$,}\quad \vec{\gamma}_{j} &\sim N(\vec{\beta}_{[s_j]}, \Sigma_c),\\
-\text{for $k \in 1\ldots K$,}\quad \vec{\beta}_{k} &\sim N(\vec{b}, \Sigma_s),\\
-\end{aligned}
-$$
-
-# 
-
-* For each one of the $n$ children, we have their `mathscore` variable $y_i$, their `ses` variable $x_i$, and an indicator variable $c_i \in 1 \ldots J$.
-* The indicator variable indicates which of the $J$ different classes the child is a member of.
-* For each of one of these $J$ classes, we have another indicator variable $s_j \in 1 \ldots K$.
-* This indicates the school that class $j$ is a member of.
-* For example, if $s_j = k$, this means that class $j$ is within school $k$.
-* From this description, we see that there are $J$ vectors of coefficients, i.e. $\vec{\gamma}_1, \vec{\gamma}_2 \ldots \vec{\gamma}_J$, and each one corresponds to one of the $J$ different classes in the data set.
-* Each vector $\vec{\gamma}_j$ is a sample from a multivariate normal distribution centered at $\vec{\beta}_{[s_j]}$, where $s_j$ is the school that class $j$ is a member of.
-* The covariance matrix of this multivariate normal distribution is $\Sigma_c$.
-* The are $K$ different vectors $\vec{\beta}_1, \vec{\beta}_2 \ldots \vec{\beta_K}$ are themselves drawn from another multivariate normal distribution whose center is $\vec{b}$ and whose covariance matrix is $\Sigma_s$.
-
 #
 
 ```{r classroom, echo=F, fig.cap="The line of best fit for the children in the school is shown.", fig.align='center', out.width='\\textwidth'}
@@ -864,6 +838,32 @@ p1
 
 
 ```
+
+# 
+
+* The relationship between `ses` and `mathscore` can vary across different schools, see Figure \ref{fig:classroom}a.
+* Furthermore, *within* each school, there may be variation in the effect of `ses` on `mathscore` across different classes, see Figure \ref{fig:classroom}b.
+* Formally, a three-level multilevel varying intercepts and slopes linear model corresponding to the above problem may be presented as follows.
+$$
+\begin{aligned}
+\text{for $i \in 1\ldots n$,}\quad y_i &\sim N(\mu_i, \sigma^2),\\
+\mu_i & = \gamma_{[c_i]0} + \gamma_{[c_i]1} x_i,\\
+\text{for $j \in 1\ldots J$,}\quad \vec{\gamma}_{j} &\sim N(\vec{\beta}_{[s_j]}, \Sigma_c),\\
+\text{for $k \in 1\ldots K$,}\quad \vec{\beta}_{k} &\sim N(\vec{b}, \Sigma_s),\\
+\end{aligned}
+$$
+
+# 
+
+* For each one of the $n$ children, we have their `mathscore` variable $y_i$, their `ses` variable $x_i$, and an indicator variable $c_i \in 1 \ldots J$.
+* The indicator variable indicates which of the $J$ different classes the child is a member of.
+* For each of one of these $J$ classes, we have another indicator variable $s_j \in 1 \ldots K$.
+* This indicates the school that class $j$ is a member of.
+* For example, if $s_j = k$, this means that class $j$ is within school $k$.
+* From this description, we see that there are $J$ vectors of coefficients, i.e. $\vec{\gamma}_1, \vec{\gamma}_2 \ldots \vec{\gamma}_J$, and each one corresponds to one of the $J$ different classes in the data set.
+* Each vector $\vec{\gamma}_j$ is a sample from a multivariate normal distribution centered at $\vec{\beta}_{[s_j]}$, where $s_j$ is the school that class $j$ is a member of.
+* The covariance matrix of this multivariate normal distribution is $\Sigma_c$.
+* The are $K$ different vectors $\vec{\beta}_1, \vec{\beta}_2 \ldots \vec{\beta_K}$ are themselves drawn from another multivariate normal distribution whose center is $\vec{b}$ and whose covariance matrix is $\Sigma_s$.
 
 # 
 
@@ -990,7 +990,7 @@ M_classroom_vi2 <- lmer(
 # 
 
 * In general, when dealing with crossed multilevel structures, we simply consider the random variation of slopes or intercepts according to more than one grouping variable.
-* As an example, consider the British Lexicon Project data that we also considered in Chapter 3.
+* As an example, consider the British Lexicon Project data.
 * This provides us with data from a large lexical decision experiment, and a small fraction of this data is provided in the file `data/blp-short2.csv`.
 ```{r, echo=T}
 blp_df <- read_csv(here('data/blp-short2.csv'))
@@ -1054,6 +1054,9 @@ mathach_df <- read_csv(here('data/mathachieve.csv'))
 ```
 * In the `mathach_df` data, for each pupil in a school, we have variable related to their ethnic minority status, sex, home socioeconomic background, and their mathematical achieve score (`mathach`).
 * Thus, in this data set, we have level 1 grouping variable, `school`, but all predictors are at level 0.
+
+# 
+
 * The `mathachschool_df` data set, on the other hand, provides us with predictors related to the schools.
 * For example, we have the school's size, whether it is public or private, etc., the proportion of students in the school on an academic track (`pracad`), a measure of the discrimination climate in the school (`disclim`), whether there is a high proportion of minority students (`himinty`), and the mean socioeconomic status of the school (`meanses`).
 * In order to use the school level and pupil level predictors together, we will join these two data frames by `school`.
@@ -1069,8 +1072,11 @@ mathach_df2 <- left_join(mathach_df,
 * For example, just like in similar examples above, we use a multilevel varying slope and varying intercept model to look at how `ses` affects `mathach` scores and how this effect varies by `school`.
 * The `ses` variable is a pupil level variable, and we would be able to treat other pupil level variable s in a similar way.
 * We would not, however, be able to use group level predictors, e.g. `pracad`, `disclim`, etc., in a similar way.
+
+# 
+
 * For example, we could not perform the following model.
-```{r, eval=F}
+```{r, eval=F, echo=T}
 # does not work
 lmer(mathach ~ pracad + (pracad|school), data = mathach_df2)
 ```
@@ -1236,7 +1242,8 @@ M_glp <- lmer(mathach ~ ses + himinty + ses:himinty + (ses|school),
   
 * Multilevel generalized linear models can be approached just like multilevel linear models.
 ```{r, echo=T}
-sleepstudy2 <- sleepstudy %>% mutate(fast_rt = Reaction < median(Reaction))
+sleepstudy2 <- sleepstudy %>%
+  mutate(fast_rt = Reaction < median(Reaction))
   
 M <- glmer(fast_rt ~ Days + (Days|Subject),
              family = binomial(link = 'logit'),
@@ -1259,6 +1266,9 @@ $$
 \end{aligned}
 $$
 where $y_i$, $s_i$, $x_i$ are, respectively, the reaction time, subject index, and days of sleep deprivation corresponding to observation $i$.
+
+#
+
 * In general, how we specify this probabilistic model and the choices available to us are identical in both the Bayesian and classical approaches.
 * Having specified the model, however, the Bayesian and classical approaches differ in terms of how they perform the inference of the unknown parameters. 
 

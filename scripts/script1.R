@@ -188,4 +188,7 @@ M_ml_vsvi <- lmer(Reaction ~ Days + (Days || Subject),
 
 
 
+M_ml_1 <- lmer(Reaction ~ Days + (Days|Subject), data = sleepstudy)
+M_ml_0 <- lmer(Reaction ~ 1 + (Days|Subject), data = sleepstudy)
+
 
